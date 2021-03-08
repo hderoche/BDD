@@ -1,0 +1,13 @@
+POST http://localhost:5001/api/insert
+Content-Type: application/json
+
+{
+"id":"c3316565-7428-48a8-91e3-34afaf5e4cfe",
+"event-type": "TRACE_EVENT",
+"occurredOn":"2021-03-07T21:12:12.039020",
+"version":1,
+"graph-id":"file-states",
+"nature":"raw-file",
+"object-name":"File025",
+"path":"[RECEIVED, VERIFIED, PROCESSED, CONSUMED]"
+}
