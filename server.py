@@ -36,6 +36,7 @@ def sendInsert():
     req = "INSERT INTO `A4BDD`.`app` (`id`, `event-type`, `occuredOn`, `version`, `graph-id`, `nature`, `object-name`, `path`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
     val = (id, event_type, occurredOn, version, graph_id, nature, object_name, path)
     cursor.execute(req, val)
+    mydb.commit()
     return jsonify(content), 201
 
 
