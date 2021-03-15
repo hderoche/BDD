@@ -1,6 +1,9 @@
 import json
+import collections
 from flask import Flask, request, jsonify
 import mysql.connector
+from datetime import datetime
+
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -43,13 +46,42 @@ def sendInsert():
     mydb.commit()
     return jsonify(content), 201
 
-
+def sqlToJson(data):
+    rowarray_list = []
+    for row in data:
+        print(type(row))
+        date = str(row[2].strftime("%m/%d/%Y, %H:%M:%S"))
+        print(date)
+        t = (row[0], row[1], date, row[3], row[4], row[5], row[6])
+        rowarray_list.append(t)
+    j = json.dumps(rowarray_list)
+    with open("getrequest.json", "w") as f:
+        f.write(j)
+    # Convert query to objects of key-value pairs
+    objects_list = []
+    for row in data:
+        d = collections.OrderedDict()
+        d["id"] = row[1]
+        d["event-type"] = row[1]
+        d["occuredOn"] = date
+        d["version"] = row[3]
+        d["graph-id"] = row[4]
+        d["nature"] = row[5]
+        d["object-nature"] = row[6]
+        d["path"] = row[7]
+        objects_list.append(d)
+    j = json.dumps(objects_list)
+    with open("getrequest.json", "w") as f:
+        f.write(j)
+    return j
 
 @app.route('/api/getall', methods=['GET'])
 def getall():
     cursor = mydb.cursor()
-    cursor.execute('SELECT * FROM `A4BDD`.`app` FOR JSON AUTO')
+    cursor.execute('SELECT * FROM `A4BDD`.`app`')
     myresult = cursor.fetchall()
-    return jsonify(myresult)
+    l = sqlToJson(myresult)
+    print(l)
+    return l
 
 app.run(bind, port)
