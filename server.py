@@ -2,16 +2,20 @@ import json
 from flask import Flask, request, jsonify
 import mysql.connector
 
+with open("secret.json", "r") as f:
+    secret = json.load(f)
+    print(secret)
+
 bind, port = 'localhost', 5001
 app = Flask(__name__)
 app.config["DEBUG"] = True
 
 mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    port=3306,
-    password="1181Montagne",
-    database="A4BDD"
+    host=secret['route'],
+    user=secret['user'],
+    port=secret['port'],
+    password=secret['password'],
+    database=secret['database']
 )
 print(mydb)
 print(mydb.cursor())
