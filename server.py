@@ -61,7 +61,7 @@ def sqlToJson(data):
     objects_list = []
     for row in data:
         d = collections.OrderedDict()
-        d["id"] = row[1]
+        d["id"] = row[0]
         d["event-type"] = row[1]
         d["occuredOn"] = date
         d["version"] = row[3]
