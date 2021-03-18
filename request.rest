@@ -1,0 +1,7 @@
+POST http://localhost:5001/api/insert
+Content-Type: application/json
+
+###
+
+GET http://localhost:5001/api/getall 
+Content-Type: application/json
