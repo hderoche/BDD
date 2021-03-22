@@ -1,0 +1,4 @@
+redis
+collections
+mysql-connector-python
+flask

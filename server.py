@@ -4,6 +4,8 @@ from flask import Flask, request, jsonify
 import mysql.connector
 from datetime import datetime
 
+import periodicFunction
+import insertRedis
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -83,5 +85,8 @@ def getall():
     l = sqlToJson(myresult)
     print(l)
     return l
+
+# Starts a function on a given interval
+periodicFunction.set_interval(,10)
 
 app.run(bind, port)
