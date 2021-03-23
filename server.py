@@ -17,7 +17,7 @@ mydb = mysql.connector.connect(
     host="localhost",
     user="root",
     port=3306,
-    password="nexuswefax@arsenal.me123",
+    password="",
     database="nosqlproject"
 )
 print(mydb)
