@@ -15,7 +15,6 @@ from datetime import datetime
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
-    print(secret)
 
 mydb = mysql.connector.connect(
     host=secret['host'],
@@ -80,5 +79,7 @@ getAll()
 sample_data = json.loads(fake_file.getvalue())
 
 records.insert_many(sample_data)
+
+print("Data added to MongoDB !")
 
 

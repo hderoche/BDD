@@ -9,7 +9,6 @@ import periodicFunction
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
-    print(secret)
 
 bind, port = 'localhost', 5001
 app = Flask(__name__)

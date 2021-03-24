@@ -14,7 +14,6 @@ from datetime import datetime
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
-    print(secret)
 
 mydb = mysql.connector.connect(
     host=secret['host'],
@@ -71,9 +70,13 @@ def getAll():
     return l
 
 def updateMongo():
+    # We retrieve that data from the database
+    getAll()
+    
     files = json.loads(fake_file.getvalue())
     
     for file in files:
+        # print(file)
         addOrUpdate(file)
 
 client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
@@ -82,16 +85,31 @@ db = client.get_database('NoSqlProject_db')
 # File -> object name & id
 def addOrUpdate(file):
     col = db.get_collection('objects')
-    cur = col.find({file.object_name})
+    cur = col.find({'object-name':file['object-name']})
     if cur:
         for doc in cur:
-            newPath = set(doc.path)
-            newPath.add(file.path)
-            doc.path = list(newPath)
-            doc.ids = [doc.id, file.id]
-            col.find_one_and_update({"object_name":file.object_name}, {"$set": {"path": doc.path, "ids": doc.ids}})
+            # We complete the path to make it complete
+            newPath = doc['path'][1:-1].replace(' ', '').split(',')
+            filePath = file['path'][1:-1].replace(' ', '').split(',')
+            for elem in filePath:
+                if (elem not in newPath):
+                    newPath.append(elem)
+            
+            # We convert the set into a string to put it back in the database
+            updatePath = "["
+            
+            for i in range(len(newPath)):
+                if (i < len(newPath)-1):
+                    updatePath += newPath[i] + ', '
+                else:
+                    updatePath += newPath[i] + "]"
+                    
+            doc['path'] = updatePath
+            doc['id'] = doc['id'] + "," + file['id']
+            col.find_one_and_update({"object-name":file['object-name']}, {"$set": {"path": doc['path'], "id": doc['id']}})
+            
     # if no document with this object_name
-    col.insert(file)
+    # col.insert_one(file)
         
 class Stats:
     def __init__(self):
@@ -108,38 +126,40 @@ class Stats:
         self.integrity = 0
         self.last_doc_id = 0
     
-    def count_by_status(self, doc):
-        if self.last_doc_id == doc.id:
-            return
-        self.last_doc_id = doc.id
-        path = doc.path
-        if "RECEIVED" in path:
-            if "VERIFIED" in path:
-                if "PROCESSED" in path:
-                    if "CONSUMED" in path:
-                        if "TO_BE_PURGED" in path:
-                            if "PURGED" in path:
-                                self.integrity += 1
-                                addAll()
-                                self.rejected -= 1
-                    elif "REJECTED" in path:
-                        if "TO_BE_PURGED" in path:
-                            if "PURGED" in path:
-                                self.integrity += 1
-                                addAll()
-                                self.consumed -= 1
-                        elif "REMEDIED" in path:
-                            # loop back on consumed
-                    else:
-                        self.status.consumed += 1 
-                else:
-                    self.status.processed += 1
-            else:
-                self.status.verified += 1
-        else:
-            self.status.received += 1                       
-        self.save()
-        return
+    # def count_by_status(self, doc):
+    #     if self.last_doc_id == doc.id:
+    #         return
+    #     self.last_doc_id = doc.id
+    #     path = doc.path
+    #     if "RECEIVED" in path:
+    #         if "VERIFIED" in path:
+    #             if "PROCESSED" in path:
+    #                 if "CONSUMED" in path:
+    #                     if "TO_BE_PURGED" in path:
+    #                         if "PURGED" in path:
+    #                             self.integrity += 1
+    #                             addAll()
+    #                             self.rejected -= 1
+    #                 elif "REJECTED" in path:
+    #                     if "TO_BE_PURGED" in path:
+    #                         if "PURGED" in path:
+    #                             self.integrity += 1
+    #                             addAll()
+    #                             self.consumed -= 1
+    #                     elif "REMEDIED" in path:
+    #                         # loop back on consumed
+                            
+    #                     else:
+    #                 else:
+    #                     self.status.consumed += 1 
+    #             else:
+    #                 self.status.processed += 1
+    #         else:
+    #             self.status.verified += 1
+    #     else:
+    #         self.status.received += 1                       
+    #     self.save()
+    #     return
         
     def addAll(self):
         self.status.received += 1 
@@ -150,4 +170,7 @@ class Stats:
         self.status.to_be_purged += 1
         self.status.purged += 1
 
+
+updateMongo()
+print("Objects upadated !")
     
