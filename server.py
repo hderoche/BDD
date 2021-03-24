@@ -3,9 +3,9 @@ import collections
 from flask import Flask, request, jsonify
 import mysql.connector
 from datetime import datetime
-
+import pymongo
 import periodicFunction
-import insertRedis
+#import insertRedis
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.config["DEBUG"] = True
 
 mydb = mysql.connector.connect(
-    host=secret['route'],
+    host=secret['host'],
     user=secret['user'],
     port=secret['port'],
     password=secret['password'],
@@ -25,10 +25,12 @@ mydb = mysql.connector.connect(
 print(mydb)
 print(mydb.cursor())
 
+# Function that returns HTML 
 @app.route('/', methods=['GET'])
 def home():
-    return "<h1>Server for inserting data</h1><p>API for NoSQL databases</p>"
+    return "<h1>Server to interract with SQL, MongoDB and Redis databases</h1><p>API for NoSQL databases</p>"
 
+# Function that inserts a raw document in SQL database
 @app.route('/api/insert', methods=['POST'])
 def sendInsert():
     content = json.loads(request.data)
@@ -48,11 +50,12 @@ def sendInsert():
     mydb.commit()
     return jsonify(content), 201
 
+# Function that convert SQL output to JSON
 def sqlToJson(data):
     rowarray_list = []
     for row in data:
         print(type(row))
-        date = str(row[2].strftime("%m/%d/%Y, %H:%M:%S"))
+        date = datetime.timestamp(row[2])
         print(date)
         t = (row[0], row[1], date, row[3], row[4], row[5], row[6])
         rowarray_list.append(t)
@@ -69,7 +72,7 @@ def sqlToJson(data):
         d["version"] = row[3]
         d["graph-id"] = row[4]
         d["nature"] = row[5]
-        d["object-nature"] = row[6]
+        d["object-name"] = row[6]
         d["path"] = row[7]
         objects_list.append(d)
     j = json.dumps(objects_list)
@@ -77,7 +80,8 @@ def sqlToJson(data):
         f.write(j)
     return j
 
-@app.route('/api/getall', methods=['GET'])
+# Function that returns all the documents from the SQL database
+@app.route('/api/all', methods=['GET'])
 def getall():
     cursor = mydb.cursor()
     cursor.execute('SELECT * FROM `A4BDD`.`app`')
@@ -87,6 +91,39 @@ def getall():
     return l
 
 # Starts a function on a given interval
-periodicFunction.set_interval(,10)
+#periodicFunction.set_interval(,1)
+
+# Function that gets the path of an document given its object-name
+@app.route('/api/mongo/path', methods=['GET'])
+def path():
+    clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
+    objectName = request.args.get('object-name')
+    db = clientMongo.get_database('NoSqlProject_db')
+    col = db.get_collection('objects')
+    doc = col.find({'object-name':objectName})
+    print('doc :', doc)
+    for record in doc:
+        path = record['path']
+        return jsonify(path), 200
+    return(jsonify("{'error in find function'}"), 500)
+
+
+# Function that returns all documents that have been modified in the last hour
+@app.route('/api/mongo/lasthour', methods=['GET'])
+def statusLastHour():
+    timestamp = request.args.get('timestamp')
+    clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
+    db = clientMongo.get_database('NoSqlProject_db')
+    col = db.get_collection('documents')
+    docs = col.find({'occurredOn':{ '$gte': timestamp - 3600}})
+    return jsonify(docs, 200)
+
+@app.route('/api/mongo/integrity', methods=['GET'])
+def integrity():
+    clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
+    db = clientMongo.get_database('NoSqlProject_db')
+    col = db.get_collection('stats')
+    doc = col.find()
+    return jsonify(doc.integrity, 200)
 
 app.run(bind, port)

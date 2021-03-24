@@ -11,13 +11,18 @@ import mysql.connector
 import collections
 import io
 import dns
+from datetime import datetime
+
+with open("secret.json", "r") as f:
+    secret = json.load(f)
+    print(secret)
 
 mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    port=3306,
-    password="",
-    database="nosqlproject"
+    host=secret['host'],
+    user=secret['user'],
+    port=secret['port'],
+    password=secret['password'],
+    database=secret['database']
 )
 
 fake_file = io.StringIO()
@@ -26,7 +31,7 @@ def sqlToJson(data):
     rowarray_list = []
     for row in data:
         # print(type(row))
-        date = str(row[2].strftime("%m/%d/%Y, %H:%M:%S"))
+        date = datetime.timestamp(row[2])
         # print(date)
         t = (row[0], row[1], date, row[3], row[4], row[5], row[6])
         rowarray_list.append(t)
@@ -45,7 +50,7 @@ def sqlToJson(data):
         d["version"] = row[3]
         d["graph-id"] = row[4]
         d["nature"] = row[5]
-        d["object-nature"] = row[6]
+        d["object-name"] = row[6]
         d["path"] = row[7]
         objects_list.append(d)
         
@@ -58,7 +63,8 @@ def sqlToJson(data):
 
 def getAll():
     cursor = mydb.cursor()
-    cursor.execute('SELECT * FROM `nosqlproject`.`data`')
+    req = 'SELECT * FROM `' + secret['database'] + '`.`' + secret['table'] + '` GROUP BY `object-name`'
+    cursor.execute(req)
     myresult = cursor.fetchall()
     l = sqlToJson(myresult)
     print(l, file=fake_file)
