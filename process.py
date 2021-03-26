@@ -69,7 +69,7 @@ def getAll():
     print(l, file=fake_file)
     return l
 
-def updateMongo():
+def updateMongoObjects():
     # We retrieve that data from the database
     getAll()
     
@@ -109,7 +109,8 @@ def addOrUpdate(file):
             col.find_one_and_update({"object-name":file['object-name']}, {"$set": {"path": doc['path'], "id": doc['id']}})
             
     # if no document with this object_name
-    # col.insert_one(file)
+    else:
+        col.insert_one(file)
         
 class Stats:
     def __init__(self):
@@ -121,56 +122,86 @@ class Stats:
             "consumed": 0,
             "rejected":0,
             "to_be_purged": 0,
-            "purged": 0
+            "purged": 0,
+            "integrity" : 0
         })
-        self.integrity = 0
-        self.last_doc_id = 0
+        # self.last_doc_id = 0
     
-    # def count_by_status(self, doc):
-    #     if self.last_doc_id == doc.id:
-    #         return
-    #     self.last_doc_id = doc.id
-    #     path = doc.path
-    #     if "RECEIVED" in path:
-    #         if "VERIFIED" in path:
-    #             if "PROCESSED" in path:
-    #                 if "CONSUMED" in path:
-    #                     if "TO_BE_PURGED" in path:
-    #                         if "PURGED" in path:
-    #                             self.integrity += 1
-    #                             addAll()
-    #                             self.rejected -= 1
-    #                 elif "REJECTED" in path:
-    #                     if "TO_BE_PURGED" in path:
-    #                         if "PURGED" in path:
-    #                             self.integrity += 1
-    #                             addAll()
-    #                             self.consumed -= 1
-    #                     elif "REMEDIED" in path:
-    #                         # loop back on consumed
-                            
-    #                     else:
-    #                 else:
-    #                     self.status.consumed += 1 
-    #             else:
-    #                 self.status.processed += 1
-    #         else:
-    #             self.status.verified += 1
-    #     else:
-    #         self.status.received += 1                       
-    #     self.save()
-    #     return
+    def count_by_status(self, doc):
+        # if self.last_doc_id == doc.id:
+        #     return
+        # self.last_doc_id = doc.id
+        path = doc['path']
         
-    def addAll(self):
-        self.status.received += 1 
-        self.status.verified += 1
-        self.status.processed += 1
-        self.status.consumed += 1
-        self.status.rejected += 1
-        self.status.to_be_purged += 1
-        self.status.purged += 1
+        rec = "RECEIVED" in path
+        ver = "VERIFIED" in path
+        pro = "PROCESSED" in path
+        rem = "REMEDIED" in path
+        con = "CONSUMED" in path
+        rej = "REJECTED" in path
+        tbp = "TO_BE_PURGED" in path
+        pur = "PURGED" in path
+        
+        integ = ((rec and ver and pro and con and tbp and pur) or 
+                 (rec and ver and pro and rej and tbp and pur) or
+                 (rec and ver and pro and rej and rem and tbp and pur) or
+                 (rec and ver and pro and rej and rem and con and tbp and pur))
+        
+        if (rec):
+             self.status['received'] += 1
+        if (ver):
+            self.status['verified'] += 1
+        if (pro):
+            self.status['processed'] += 1
+        if (rem):
+            self.status['remedied'] += 1
+        if (con):
+            self.status['consumed'] += 1
+        if (rej):
+            self.status['rejected'] += 1
+        if (tbp):
+            self.status['to_be_purged'] += 1
+        if (pur):
+            self.status['purged'] += 1
+        if (integ):
+            self.status['integrity'] += 1
 
 
-updateMongo()
-print("Objects upadated !")
+def updateStats():
+    files = list(db.get_collection('objects').find())
+    statis = db.get_collection('stats')
+    
+    stats = Stats()
+    
+    for file in files:
+        stats.count_by_status(file)
+        
+    # print(stats.status)
+    
+    newStats = stats.status
+    
+    if(len(list(statis.find())) == 0):
+        statis.insert_one(newStats)
+        
+    else:
+        id = statis.find_one()['_id']
+        statis.find_one_and_update({"_id":id}, {"$set": {'received': newStats['received'], 'verified': newStats['verified'], 
+                                                         'processed': newStats['processed'], 'remedied': newStats['remedied'], 
+                                                         'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
+                                                         'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
+                                                         'integrity': newStats['integrity']}})
+    
+    print("Stats Updated in Mongo return!")
+    
+
+def updateStatsHeure():
+    return
+    
+    
+updateStats()
+
+# updateMongoObjects()
+# print("Mongo upadated !")
+
+
     
