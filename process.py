@@ -10,7 +10,7 @@ import json
 import mysql.connector
 import collections
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -195,10 +195,38 @@ def updateStats():
     
 
 def updateStatsHeure():
-    return
+    hour = datetime.now() - timedelta(hours=1)
+    tsHour = int(hour.timestamp())
+    now = int(datetime.now().timestamp())
+    
+    files = list(db.get_collection('objects').find({'$and': [{'occuredOn': {'$gte': tsHour}}, {'occuredOn': {'$lte': now}}]}))
+    
+    statis = db.get_collection('statsHeure')
+    
+    stats = Stats()
+    
+    for file in files:
+        stats.count_by_status(file)
+        
+    # print(stats.status)
+    
+    newStats = stats.status
+    
+    if(len(list(statis.find())) == 0):
+        statis.insert_one(newStats)
+        
+    else:
+        id = statis.find_one()['_id']
+        statis.find_one_and_update({"_id":id}, {"$set": {'received': newStats['received'], 'verified': newStats['verified'], 
+                                                         'processed': newStats['processed'], 'remedied': newStats['remedied'], 
+                                                         'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
+                                                         'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
+                                                         'integrity': newStats['integrity']}})
     
     
-updateStats()
+    
+    
+updateStatsHeure()
 
 # updateMongoObjects()
 # print("Mongo upadated !")
