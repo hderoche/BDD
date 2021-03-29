@@ -1,4 +1,4 @@
-# Project noSQL
+# Project noSQL - Hugo DEROCHE - Thibault DROUOT - Malcolm ETOUNDI
 
 ## Prérequis :
 
