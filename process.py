@@ -105,7 +105,6 @@ def getAll():
     myresult = cursor.fetchall()
     l = sqlToJson(myresult)
     # print(l, file=fake_file)
-
     return l
 
 
@@ -116,6 +115,7 @@ def getAll():
 def addOrUpdate(file):
     print("here file :", file['object-name'])
     col = db.get_collection('objects')
+    # We needed two cursors because they become empty after we used them once
     cur = col.find({'object-name': file['object-name']})
     cur2 = col.find({'object-name': file['object-name']})
     if (len(list(cur)) > 0) :

@@ -121,6 +121,7 @@ def statusLastHour():
     return(jsonify("{'error in find function'}"), 500)
 
 
+# Get the stats updated from the SQL function, every time the periodic function is called
 @app.route('/api/stats', methods=['GET'])
 def stats():
     process.updateStats()
