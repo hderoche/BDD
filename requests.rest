@@ -11,3 +11,6 @@ Content-Type: application/json
 ###
 GET http://localhost:5001/api/mongo/path?object-name=File-24
 Content-Type: application/json
+
+### 
+GET http://localhost:5001/api/stats

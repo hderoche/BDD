@@ -24,21 +24,11 @@ mydb = mysql.connector.connect(
     password=secret['password'],
     database=secret['database']
 )
-
-# Connection to the databases Mongodb and redis
-client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
-db = client.get_database('NoSqlProject_db')
-rclient = RedisFunctions(secret['host'], secret['port'], secret['password'])
-
-# File to read tthe data received from the database in MySQL
-fake_file = io.StringIO()
-
-
 class RedisFunctions():
     def __init__(self, host, port, pas):
         self.r = redis.Redis(host,port, pas)
     
-    def client():
+    def client(self):
         return self.r
 
     def find_by_namespace(self, namespace):
@@ -59,6 +49,16 @@ class RedisFunctions():
     def count_collection(self, match):
         arr = r.scan_iter(match)
         return len(arr)
+
+# Connection to the databases Mongodb and redis
+client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
+db = client.get_database('NoSqlProject_db')
+rclient = RedisFunctions(secret['host'], secret['port'], secret['password'])
+
+# File to read tthe data received from the database in MySQL
+fake_file = io.StringIO()
+
+
 
 
 # Turns the data retrieved from the MySQL db and turns it into JSON
