@@ -90,7 +90,8 @@ def getall():
     return l
 
 # Starts a function on a given interval
-#periodicFunction.set_interval(,1)
+
+periodicFunction.set_interval(process.updateMongoObjects,30)
 
 # Function that gets the path of an document given its object-name
 @app.route('/api/mongo/path', methods=['GET'])
@@ -113,19 +114,23 @@ def statusLastHour():
     timestamp = request.args.get('timestamp')
     clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
     db = clientMongo.get_database('NoSqlProject_db')
-    col = db.get_collection('objects')
-    docs = col.find({'occurredOn':{ '$gte': timestamp - 3600}})
-    return jsonify(docs, 200)
+    col = db.get_collection('statsHeure')
+    docs = col.find({}, {"_id": 0})
+    for record in docs:
+        return jsonify(record), 200
+    return(jsonify("{'error in find function'}"), 500)
 
 
-@app.route('/api/stats/lastHour', methods=['GET'])
-def statsLastHour():
-    process.updateStatsHeure()
+@app.route('/api/stats', methods=['GET'])
+def stats():
+    process.updateStats()
     clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
     db = clientMongo.get_database('NoSqlProject_db')
-    col = db.get_collection('stat')
-    docs = col.find()
-    return jsonify(doc, 200)
+    col = db.get_collection('stats')
+    docs = col.find({}, {"_id": 0})
+    for record in docs:
+        return jsonify(record, 200)
+    return(jsonify("{'error in find function'}"), 500)
 
 
 app.run(bind, port)

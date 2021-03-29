@@ -1,5 +1,17 @@
 # Project noSQL
 
+## Pour utiliser le projet :
+
+* Il faut que le fichier log soit dans le même dossier
+
+Toutes les requetes demandées dont dans le fichier requests.rest
+
+Pour pouvoir les envoyer, il faut installer l'extension Rest Client dans Visual Studio Code
+
+* Insérer les données en lancant le `server.py`
+    * Envoyer la requete `insert`
+* Appeler les requetes souhaitées via le `server.py`
+
 ## Installer les dépendances
 
 ```

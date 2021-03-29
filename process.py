@@ -24,36 +24,36 @@ mydb = mysql.connector.connect(
     password=secret['password'],
     database=secret['database']
 )
-class RedisFunctions():
-    def __init__(self, host, port, pas):
-        self.r = redis.Redis(host,port, pas)
+# class RedisFunctions():
+#     def __init__(self, host, port, pas):
+#         self.r = redis.Redis(host,port, pas)
     
-    def client(self):
-        return self.r
+#     def client(self):
+#         return self.r
 
-    def find_by_namespace(self, namespace):
-        docByNamespace = self.r.keys(namespace)
-        return docByNamespace
+#     def find_by_namespace(self, namespace):
+#         docByNamespace = self.r.keys(namespace)
+#         return docByNamespace
     
-    def insert(self, name, doc):
-        r.hmset(name, doc)
+#     def insert(self, name, doc):
+#         r.hmset(name, doc)
     
-    # match is a regex param
-    def find_one(self, match):
-        return r.scan_iter(match)
+#     # match is a regex param
+#     def find_one(self, match):
+#         return r.scan_iter(match)
     
-    def find_and_update(self, name, field, value):
-        r.hset(name, field, value)
+#     def find_and_update(self, name, field, value):
+#         r.hset(name, field, value)
 
-    # match is a regex param
-    def count_collection(self, match):
-        arr = r.scan_iter(match)
-        return len(arr)
+#     # match is a regex param
+#     def count_collection(self, match):
+#         arr = r.scan_iter(match)
+#         return len(arr)
 
 # Connection to the databases Mongodb and redis
 client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
 db = client.get_database('NoSqlProject_db')
-rclient = RedisFunctions(secret['host'], secret['port'], secret['password'])
+rclient = redis.Redis(secret['host'], secret['portRedis'], 0)
 
 # File to read tthe data received from the database in MySQL
 fake_file = io.StringIO()
@@ -104,28 +104,22 @@ def getAll():
     cursor.execute(req)
     myresult = cursor.fetchall()
     l = sqlToJson(myresult)
-    print(l, file=fake_file)
+    # print(l, file=fake_file)
+
     return l
 
-
-# Fills the objects table in the mongo database
-def updateMongoObjects():
-    # We retrieve that data from the database
-    getAll()
-    
-    files = json.loads(fake_file.getvalue())
-    for file in files:
-        addOrUpdate(file)
 
 
 # Called in the previous function, its managing to update the path of a given file
 # if it's already in the database. It also adds files that aren't in the db.
 # File -> object name & id
 def addOrUpdate(file):
+    print("here file :", file['object-name'])
     col = db.get_collection('objects')
-    cur = col.find({'object-name':file['object-name']})
-    if (len(list(cur)) != 0):
-        for doc in cur:
+    cur = col.find({'object-name': file['object-name']})
+    cur2 = col.find({'object-name': file['object-name']})
+    if (len(list(cur)) > 0) :
+        for doc in cur2:
             # We update the path of a given file
             newPath = doc['path'][1:-1].replace(' ', '').split(',')
             filePath = file['path'][1:-1].replace(' ', '').split(',')
@@ -145,12 +139,13 @@ def addOrUpdate(file):
             doc['path'] = updatePath
             doc['id'] = doc['id'] + "," + file['id']
             col.find_one_and_update({"object-name":file['object-name']}, {"$set": {"path": doc['path'], "id": doc['id']}})
-            rclient.client().hmset(file['object-name'],"path", doc['path'], "id", doc['id'] )
+            rclient.hmset(file['object-name'], {"path": doc['path'], "id": doc['id']})
     # if no document with this object_name
     # we just add it to both databases
     else:
         col.insert_one(file)
-        rclient.insert(file['object-name'], file)
+        file['_id'] = str(file['_id'])
+        rclient.hmset(file['object-name'], file)
 
 
 # Used to generate Stats objects that will store the information of
@@ -221,10 +216,11 @@ def updateStats():
     # print(stats.status)
     
     newStats = stats.status
-    
+    print('stats',newStats)
     if(len(list(statis.find())) == 0):
         statis.insert_one(newStats)
-        rclient.insert('stats', newStats)
+        newStats['_id'] = str(newStats['_id'])
+        rclient.hmset('stats', newStats)
     else:
         id = statis.find_one()['_id']
         statis.find_one_and_update({"_id":id}, {"$set": {'received': newStats['received'], 'verified': newStats['verified'], 
@@ -233,11 +229,7 @@ def updateStats():
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
 
-        rclient.client().hmset('stats', dict({'received': newStats['received'], 'verified': newStats['verified'], 
-                                                         'processed': newStats['processed'], 'remedied': newStats['remedied'], 
-                                                         'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
-                                                         'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
-                                                         'integrity': newStats['integrity']}))
+        rclient.hmset('stats', {'received': newStats['received'], 'verified': newStats['verified'], 'processed': newStats['processed'], 'remedied': newStats['remedied'], 'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 'integrity': newStats['integrity']})
     
     print("Stats Updated in Mongo return!")
     
@@ -265,7 +257,8 @@ def updateStatsHeure():
     
     if(len(list(statis.find())) == 0):
         statis.insert_one(newStats)
-        rclient.insert('stats', newStats)
+
+        rclient.hmset('stats', newStats)
         
     else:
         id = statis.find_one()['_id']
@@ -275,11 +268,11 @@ def updateStatsHeure():
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
 
-        rclient.client().hmset('stats', dict({'received': newStats['received'], 'verified': newStats['verified'], 
+        rclient.hmset('stats', {'received': newStats['received'], 'verified': newStats['verified'], 
                                                          'processed': newStats['processed'], 'remedied': newStats['remedied'], 
                                                          'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
-                                                         'integrity': newStats['integrity']}))
+                                                         'integrity': newStats['integrity']})
     
 
 
@@ -287,4 +280,12 @@ def updateStatsHeure():
 # print("Mongo upadated !")
 
 
-    
+# Fills the objects table in the mongo database
+def updateMongoObjects():
+    # We retrieve that data from the database
+    getAll()
+    with open('getrequest.json', 'r') as f:
+        files = json.loads(f.read())
+    for file in files:
+        addOrUpdate(file)
+
