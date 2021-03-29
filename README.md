@@ -1,5 +1,6 @@
 # Project noSQL
 
+Malcolm Etoundi, Thibault Drouot, Hugo Deroche
 ## Prérequis :
 
 Il faut créer un `secret.json` dans le dossier
