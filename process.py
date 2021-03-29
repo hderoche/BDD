@@ -233,11 +233,11 @@ def updateStats():
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
 
-        rclient.client().hmset('stats', 'received', newStats['received'], 'verified', newStats['verified'], 
-                                                         'processed', newStats['processed'], 'remedied', newStats['remedied'], 
-                                                         'consumed', newStats['consumed'], 'rejected', newStats['rejected'], 
-                                                         'to_be_purged', newStats['to_be_purged'], 'purged', newStats['purged'], 
-                                                         'integrity', newStats['integrity'])
+        rclient.client().hmset('stats', dict({'received': newStats['received'], 'verified': newStats['verified'], 
+                                                         'processed': newStats['processed'], 'remedied': newStats['remedied'], 
+                                                         'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
+                                                         'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
+                                                         'integrity': newStats['integrity']}))
     
     print("Stats Updated in Mongo return!")
     
@@ -275,11 +275,11 @@ def updateStatsHeure():
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
 
-        rclient.client().hmset('stats', 'received', newStats['received'], 'verified', newStats['verified'], 
-                                                         'processed', newStats['processed'], 'remedied', newStats['remedied'], 
-                                                         'consumed', newStats['consumed'], 'rejected', newStats['rejected'], 
-                                                         'to_be_purged', newStats['to_be_purged'], 'purged', newStats['purged'], 
-                                                         'integrity', newStats['integrity'])
+        rclient.client().hmset('stats', dict({'received': newStats['received'], 'verified': newStats['verified'], 
+                                                         'processed': newStats['processed'], 'remedied': newStats['remedied'], 
+                                                         'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
+                                                         'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
+                                                         'integrity': newStats['integrity']}))
     
 
 
