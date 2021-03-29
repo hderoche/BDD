@@ -39,3 +39,7 @@ Seule la requete concernant le nombre d'objets par status sur la dernière heure
 ## SQL -> Redis
 
 La meme approche est effectuée côté Redis.
+
+## SQL
+
+Un fichier SQL avec la table que nous avons utilisée dans notre projet est disponible également sur le GitHub.
