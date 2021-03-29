@@ -11,6 +11,8 @@ import mysql.connector
 import collections
 import io
 from datetime import datetime, timedelta
+import redis
+
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -74,13 +76,13 @@ def updateMongoObjects():
     getAll()
     
     files = json.loads(fake_file.getvalue())
-    
     for file in files:
-        # print(file)
         addOrUpdate(file)
 
+# Connection to the databases Mongodb and redis
 client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
 db = client.get_database('NoSqlProject_db')
+r = redis.Redis(host=secret['host'], port=secret['port'], db=secret['db'])
 
 # File -> object name & id
 def addOrUpdate(file):
@@ -107,11 +109,15 @@ def addOrUpdate(file):
             doc['path'] = updatePath
             doc['id'] = doc['id'] + "," + file['id']
             col.find_one_and_update({"object-name":file['object-name']}, {"$set": {"path": doc['path'], "id": doc['id']}})
-            
+    
+
+
     # if no document with this object_name
+    # we just add it to both databases
     else:
         col.insert_one(file)
-        
+        r.hmset(file['object_name'], file)
+
 class Stats:
     def __init__(self):
         self.status = dict({
@@ -125,12 +131,9 @@ class Stats:
             "purged": 0,
             "integrity" : 0
         })
-        # self.last_doc_id = 0
     
     def count_by_status(self, doc):
-        # if self.last_doc_id == doc.id:
-        #     return
-        # self.last_doc_id = doc.id
+
         path = doc['path']
         
         rec = "RECEIVED" in path
@@ -170,7 +173,6 @@ class Stats:
 def updateStats():
     files = list(db.get_collection('objects').find())
     statis = db.get_collection('stats')
-    
     stats = Stats()
     
     for file in files:
@@ -222,10 +224,31 @@ def updateStatsHeure():
                                                          'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
+
     
+class RedisFunctions():
+    def __init__(self, host, secret, db):
+        self.r = redis.Redis(host, port, db)
     
+    def find_by_namespace(self, namespace):
+        docByNamespace = self.r.keys(namespace)
+        return docByNamespace
     
+    def insert(self, name, doc):
+        r.hmset(name, doc)
     
+    # match is a regex param
+    def find_one(self, match):
+        return r.scan_iter(match)
+    
+    def find_and_update(self, name, field, value):
+        r.hset(name, field, value)
+
+    # match is a regex param
+    def count_collection(self, match):
+        arr = r.scan_iter(match)
+        return len(arr)
+
 updateStatsHeure()
 
 # updateMongoObjects()
