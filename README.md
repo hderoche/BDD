@@ -1,5 +1,21 @@
 # Project noSQL
 
+## Prérequis :
+
+Il faut créer un `secret.json` dans le dossier
+
+```
+{
+    "host":"localhost",
+    "user":"root",
+    "port":3306,
+    "password":"",
+    "database":"A4BDD",
+    "table": "app",
+    "portRedis": 
+}
+```
+
 ## Pour utiliser le projet :
 
 * Il faut que le fichier log soit dans le même dossier
