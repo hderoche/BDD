@@ -11,8 +11,8 @@ Il faut créer un `secret.json` dans le dossier
     "user":"root",
     "port":3306,
     "password":"",
-    "database":"A4BDD",
-    "table": "app",
+    "database":"",
+    "table": "data",
     "portRedis": 
 }
 ```
