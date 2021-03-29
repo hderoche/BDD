@@ -25,9 +25,43 @@ mydb = mysql.connector.connect(
     database=secret['database']
 )
 
+# Connection to the databases Mongodb and redis
+client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
+db = client.get_database('NoSqlProject_db')
+rclient = RedisFunctions(secret['host'], secret['port'], secret['password'])
 
+# File to read tthe data received from the database in MySQL
 fake_file = io.StringIO()
 
+
+class RedisFunctions():
+    def __init__(self, host, port, pas):
+        self.r = redis.Redis(host,port, pas)
+    
+    def client():
+        return self.r
+
+    def find_by_namespace(self, namespace):
+        docByNamespace = self.r.keys(namespace)
+        return docByNamespace
+    
+    def insert(self, name, doc):
+        r.hmset(name, doc)
+    
+    # match is a regex param
+    def find_one(self, match):
+        return r.scan_iter(match)
+    
+    def find_and_update(self, name, field, value):
+        r.hset(name, field, value)
+
+    # match is a regex param
+    def count_collection(self, match):
+        arr = r.scan_iter(match)
+        return len(arr)
+
+
+# Turns the data retrieved from the MySQL db and turns it into JSON
 def sqlToJson(data):
     rowarray_list = []
     for row in data:
@@ -62,6 +96,8 @@ def sqlToJson(data):
         
     return j
 
+
+# Retrieve all the lines of the db MySQL by using the previous function
 def getAll():
     cursor = mydb.cursor()
     req = 'SELECT * FROM `' + secret['database'] + '`.`' + secret['table'] + '`'
@@ -71,6 +107,8 @@ def getAll():
     print(l, file=fake_file)
     return l
 
+
+# Fills the objects table in the mongo database
 def updateMongoObjects():
     # We retrieve that data from the database
     getAll()
@@ -79,18 +117,16 @@ def updateMongoObjects():
     for file in files:
         addOrUpdate(file)
 
-# Connection to the databases Mongodb and redis
-client = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
-db = client.get_database('NoSqlProject_db')
-r = redis.Redis(host=secret['host'], port=secret['port'], db=secret['db'])
 
+# Called in the previous function, its managing to update the path of a given file
+# if it's already in the database. It also adds files that aren't in the db.
 # File -> object name & id
 def addOrUpdate(file):
     col = db.get_collection('objects')
     cur = col.find({'object-name':file['object-name']})
-    if cur:
+    if (len(list(cur)) != 0):
         for doc in cur:
-            # We complete the path to make it complete
+            # We update the path of a given file
             newPath = doc['path'][1:-1].replace(' ', '').split(',')
             filePath = file['path'][1:-1].replace(' ', '').split(',')
             for elem in filePath:
@@ -109,15 +145,17 @@ def addOrUpdate(file):
             doc['path'] = updatePath
             doc['id'] = doc['id'] + "," + file['id']
             col.find_one_and_update({"object-name":file['object-name']}, {"$set": {"path": doc['path'], "id": doc['id']}})
-    
-
-
+            rclient.client().hmset(file['object-name'],"path", doc['path'], "id", doc['id'] )
     # if no document with this object_name
     # we just add it to both databases
     else:
         col.insert_one(file)
-        r.hmset(file['object_name'], file)
+        rclient.insert(file['object-name'], file)
 
+
+# Used to generate Stats objects that will store the information of
+# how many files there are for a given status and if the file
+# respects the integrity or not
 class Stats:
     def __init__(self):
         self.status = dict({
@@ -145,6 +183,7 @@ class Stats:
         tbp = "TO_BE_PURGED" in path
         pur = "PURGED" in path
         
+        # Testing the integrity of a file
         integ = ((rec and ver and pro and con and tbp and pur) or 
                  (rec and ver and pro and rej and tbp and pur) or
                  (rec and ver and pro and rej and rem and tbp and pur) or
@@ -170,6 +209,7 @@ class Stats:
             self.status['integrity'] += 1
 
 
+# Updates the data in mongo an redis in order to get the stats
 def updateStats():
     files = list(db.get_collection('objects').find())
     statis = db.get_collection('stats')
@@ -184,7 +224,7 @@ def updateStats():
     
     if(len(list(statis.find())) == 0):
         statis.insert_one(newStats)
-        
+        rclient.insert('stats', newStats)
     else:
         id = statis.find_one()['_id']
         statis.find_one_and_update({"_id":id}, {"$set": {'received': newStats['received'], 'verified': newStats['verified'], 
@@ -192,11 +232,20 @@ def updateStats():
                                                          'consumed': newStats['consumed'], 'rejected': newStats['rejected'], 
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
+
+        rclient.client().hmset('stats', 'received', newStats['received'], 'verified', newStats['verified'], 
+                                                         'processed', newStats['processed'], 'remedied', newStats['remedied'], 
+                                                         'consumed', newStats['consumed'], 'rejected', newStats['rejected'], 
+                                                         'to_be_purged', newStats['to_be_purged'], 'purged', newStats['purged'], 
+                                                         'integrity', newStats['integrity'])
     
     print("Stats Updated in Mongo return!")
     
 
+# Updates the data in mongo an redis in order to get the stats by hour
 def updateStatsHeure():
+
+    # We get the current hour and the last hour
     hour = datetime.now() - timedelta(hours=1)
     tsHour = int(hour.timestamp())
     now = int(datetime.now().timestamp())
@@ -216,6 +265,7 @@ def updateStatsHeure():
     
     if(len(list(statis.find())) == 0):
         statis.insert_one(newStats)
+        rclient.insert('stats', newStats)
         
     else:
         id = statis.find_one()['_id']
@@ -225,31 +275,13 @@ def updateStatsHeure():
                                                          'to_be_purged': newStats['to_be_purged'], 'purged': newStats['purged'], 
                                                          'integrity': newStats['integrity']}})
 
+        rclient.client().hmset('stats', 'received', newStats['received'], 'verified', newStats['verified'], 
+                                                         'processed', newStats['processed'], 'remedied', newStats['remedied'], 
+                                                         'consumed', newStats['consumed'], 'rejected', newStats['rejected'], 
+                                                         'to_be_purged', newStats['to_be_purged'], 'purged', newStats['purged'], 
+                                                         'integrity', newStats['integrity'])
     
-class RedisFunctions():
-    def __init__(self, host, secret, db):
-        self.r = redis.Redis(host, port, db)
-    
-    def find_by_namespace(self, namespace):
-        docByNamespace = self.r.keys(namespace)
-        return docByNamespace
-    
-    def insert(self, name, doc):
-        r.hmset(name, doc)
-    
-    # match is a regex param
-    def find_one(self, match):
-        return r.scan_iter(match)
-    
-    def find_and_update(self, name, field, value):
-        r.hset(name, field, value)
 
-    # match is a regex param
-    def count_collection(self, match):
-        arr = r.scan_iter(match)
-        return len(arr)
-
-updateStatsHeure()
 
 # updateMongoObjects()
 # print("Mongo upadated !")

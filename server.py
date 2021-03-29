@@ -5,7 +5,7 @@ import mysql.connector
 from datetime import datetime
 import pymongo
 import periodicFunction
-#import insertRedis
+import process 
 
 with open("secret.json", "r") as f:
     secret = json.load(f)
@@ -43,7 +43,7 @@ def sendInsert():
     occurredOn = content['occurredOn']
     path = content['path']
     cursor = mydb.cursor()
-    req = "INSERT INTO `A4BDD`.`app` (`id`, `event-type`, `occuredOn`, `version`, `graph-id`, `nature`, `object-name`, `path`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"
+    req = 'INSERT INTO `' + secret['database'] + '`.`' + secret['table'] + '` ' + '(`id`, `event-type`, `occuredOn`, `version`, `graph-id`, `nature`, `object-name`, `path`) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);'
     val = (id, event_type, occurredOn, version, graph_id, nature, object_name, path)
     cursor.execute(req, val)
     mydb.commit()
@@ -83,7 +83,7 @@ def sqlToJson(data):
 @app.route('/api/all', methods=['GET'])
 def getall():
     cursor = mydb.cursor()
-    cursor.execute('SELECT * FROM `A4BDD`.`app`')
+    cursor.execute('SELECT * FROM `' + secret['database'] + '`.`' + secret['table'] + '`')
     myresult = cursor.fetchall()
     l = sqlToJson(myresult)
     print(l)
@@ -113,16 +113,19 @@ def statusLastHour():
     timestamp = request.args.get('timestamp')
     clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
     db = clientMongo.get_database('NoSqlProject_db')
-    col = db.get_collection('documents')
+    col = db.get_collection('objects')
     docs = col.find({'occurredOn':{ '$gte': timestamp - 3600}})
     return jsonify(docs, 200)
 
-@app.route('/api/mongo/integrity', methods=['GET'])
-def integrity():
+
+@app.route('/api/stats/lastHour', methods=['GET'])
+def statsLastHour():
+    process.updateStatsHeure()
     clientMongo = pymongo.MongoClient('mongodb+srv://admin:admin@cluster0.ocwzp.mongodb.net/NoSqlProject_db?retryWrites=true&w=majority')
     db = clientMongo.get_database('NoSqlProject_db')
-    col = db.get_collection('stats')
-    doc = col.find()
-    return jsonify(doc.integrity, 200)
+    col = db.get_collection('stat')
+    docs = col.find()
+    return jsonify(doc, 200)
+
 
 app.run(bind, port)
